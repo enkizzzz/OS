@@ -4,6 +4,7 @@
 #include "i8254.h"
 extern uchar mac_addr[6];
 extern uchar my_ip[4];
+//
 
 struct arp_entry arp_table[ARP_TABLE_MAX] = {0};
 
