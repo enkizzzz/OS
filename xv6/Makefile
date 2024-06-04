@@ -38,6 +38,7 @@ OBJS = \
 	icmp.o\
 	tcp.o\
 	http.o\
+	printpttest.o\
 # Cross-compiling (e.g., on Mac OS X)
 # TOOLPREFIX = i386-jos-elf
 
@@ -185,6 +186,13 @@ UPROGS=\
 	_usertests\
 	_wc\
 	_zombie\
+	_printpttest\
+
+
+_printpttest: printpttest.o $(ULIB)
+   $(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _printpttest printpttest.o $(ULIB)
+   $(OBJDUMP) -S _printpttest > printpttest.asm
+   $(OBJDUMP) -t _printpttest | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > printpttest.sym
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

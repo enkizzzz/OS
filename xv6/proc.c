@@ -202,6 +202,18 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+  // Set up new stack space for child process at KERNBASE - PGSIZE
+  if (allocuvm(np->pgdir, KERNBASE - PGSIZE, KERNBASE) == 0) {
+      kfree(np->kstack);
+      kfree(np->pgdir);
+      np->kstack = 0;
+      np->pgdir = 0;
+      np->state = UNUSED;
+      return -1;
+  }
+
+  // Initialize new stack area
+  clearpteu(np->pgdir, (char*)(KERNBASE - PGSIZE));
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
@@ -360,6 +372,50 @@ scheduler(void)
 
   }
 }
+//랩4 printpt함수 추가
+//호출함수 있어야함
+pte_t* walkpgdir(pde_t* pgdir, const void* va, int alloc);
+int printpt(int pid)
+{
+    struct proc* p = 0;
+    pde_t* pgdir;
+    pte_t* pte;
+    uint va;
+    int found = 0;
+
+   
+    acquire(&ptable.lock);
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+        if (p->pid == pid) {
+            found = 1;
+            break;
+        }
+    }
+    if (!found || p->state == UNUSED) {
+        release(&ptable.lock);
+        cprintf("Process with pid %d not found or is in UNUSED state\n", pid);
+        return -1;
+    }
+    release(&ptable.lock); 
+
+    pgdir = p->pgdir;
+
+    cprintf("START PAGE TABLE (pid %d)\n", pid);
+    for (va = 0; va < KERNBASE; va += PGSIZE) {
+        pte = walkpgdir(pgdir, (void*)va, 0);
+        if (pte && (*pte & PTE_P)) {
+            cprintf("VA: 0x%x P %c %c PA: 0x%x\n",
+                va,
+                (*pte & PTE_U) ? 'U' : 'K',
+                (*pte & PTE_W) ? 'W' : '-',
+                PTE_ADDR(*pte));
+        }
+    }
+    cprintf("END PAGE TABLE\n");
+    return 0;
+}
+
+
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
